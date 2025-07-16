@@ -1,165 +1,199 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 
-#define MAX 100
+typedef struct Question {
+    int id;
+    char content[256];
+    char topic[100];
+    int level;
+} Question;
 
-// Cấu trúc cuộc gọi
-typedef struct {
-    char phone[20];
-    char timeStr[30];
-} Call;
+typedef struct NodeSLL {
+    Question data;
+    struct NodeSLL *next;
+} NodeSLL;
 
-// Cấu trúc Stack
-typedef struct {
-    Call data[MAX];
-    int top;
-} Stack;
+typedef struct NodeDLL {
+    Question data;
+    struct NodeDLL *prev;
+    struct NodeDLL *next;
+} NodeDLL;
 
-// Cấu trúc Queue
-typedef struct {
-    Call data[MAX];
-    int front, rear;
-} Queue;
+NodeSLL *headSLL = NULL;
+NodeDLL *headDLL = NULL;
+NodeDLL *tailDLL = NULL;
 
-// ==== Stack Functions ====
-void initStack(Stack *s) {
-    s->top = -1;
+NodeSLL* createNodeSLL(Question q) {
+    NodeSLL *node = (NodeSLL*)malloc(sizeof(NodeSLL));
+    node->data = q;
+    node->next = NULL;
+    return node;
 }
 
-int isEmptyStack(Stack *s) {
-    return s->top == -1;
+NodeDLL* createNodeDLL(Question q) {
+    NodeDLL *node = (NodeDLL*)malloc(sizeof(NodeDLL));
+    node->data = q;
+    node->prev = node->next = NULL;
+    return node;
 }
 
-int isFullStack(Stack *s) {
-    return s->top == MAX - 1;
+void addQuestion() {
+    Question q;
+    printf("Nhap ID: "); scanf("%d", &q.id);
+    getchar();
+    printf("Nhap noi dung: "); fgets(q.content, sizeof(q.content), stdin);
+    q.content[strcspn(q.content, "\n")] = '\0';
+    printf("Nhap chu de: "); fgets(q.topic, sizeof(q.topic), stdin);
+    q.topic[strcspn(q.topic, "\n")] = '\0';
+    printf("Nhap do kho (1-5): "); scanf("%d", &q.level);
+
+    NodeSLL *node = createNodeSLL(q);
+    node->next = headSLL;
+    headSLL = node;
+
+    printf("Them cau hoi thanh cong.\n");
 }
 
-void push(Stack *s, Call c) {
-    if (!isFullStack(s)) {
-        s->data[++s->top] = c;
-    }
-}
-
-Call pop(Stack *s) {
-    if (!isEmptyStack(s)) {
-        return s->data[s->top--];
-    }
-    Call empty = {"", ""};
-    return empty;
-}
-
-Call peek(Stack *s) {
-    if (!isEmptyStack(s)) {
-        return s->data[s->top];
-    }
-    Call empty = {"", ""};
-    return empty;
-}
-
-// ==== Queue Functions ====
-void initQueue(Queue *q) {
-    q->front = 0;
-    q->rear = -1;
-}
-
-int isEmptyQueue(Queue *q) {
-    return q->rear < q->front;
-}
-
-int isFullQueue(Queue *q) {
-    return q->rear == MAX - 1;
-}
-
-void enqueue(Queue *q, Call c) {
-    if (!isFullQueue(q)) {
-        q->data[++q->rear] = c;
-    }
-}
-
-void displayQueue(Queue *q) {
-    if (isEmptyQueue(q)) {
-        printf("Lich su cuoc goi trong.\n");
+void displaySLL() {
+    NodeSLL *cur = headSLL;
+    if (!cur) {
+        printf("Khong co cau hoi dang luyen.\n");
         return;
     }
-    printf("\nLich su cuoc goi:\n");
-    for (int i = q->front; i <= q->rear; i++) {
-        printf("So: %s | Thoi gian: %s\n", q->data[i].phone, q->data[i].timeStr);
+    while (cur) {
+        printf("ID: %d | Content: %s | Topic: %s | Level: %d\n", 
+               cur->data.id, cur->data.content, cur->data.topic, cur->data.level);
+        cur = cur->next;
     }
 }
 
-// ==== Thời gian hiện tại ====
-void getCurrentTime(char *buffer) {
-    time_t now = time(NULL);
-    struct tm *t = localtime(&now);
-    strftime(buffer, 30, "%Y-%m-%d %H:%M:%S", t);
+void updateQuestion() {
+    int id;
+    printf("Nhap ID cau hoi can cap nhat: ");
+    scanf("%d", &id);
+    getchar();
+    NodeSLL *cur = headSLL;
+    while (cur) {
+        if (cur->data.id == id) {
+            printf("Cap nhat noi dung moi: "); fgets(cur->data.content, sizeof(cur->data.content), stdin);
+            cur->data.content[strcspn(cur->data.content, "\n")] = '\0';
+            printf("Cap nhat chu de moi: "); fgets(cur->data.topic, sizeof(cur->data.topic), stdin);
+            cur->data.topic[strcspn(cur->data.topic, "\n")] = '\0';
+            printf("Cap nhat do kho moi (1-5): "); scanf("%d", &cur->data.level);
+            printf("Cap nhat thanh cong.\n");
+            return;
+        }
+        cur = cur->next;
+    }
+    printf("Khong tim thay cau hoi co ID %d.\n", id);
 }
 
-// ==== Main Program ====
-int main() {
-    Stack backStack, forwardStack;
-    Queue callHistoryQueue;
+void markAsDone() {
+    int id;
+    printf("Nhap ID cau hoi da luyen xong: ");
+    scanf("%d", &id);
+    NodeSLL *cur = headSLL, *prev = NULL;
+    while (cur) {
+        if (cur->data.id == id) {
+            if (prev) prev->next = cur->next;
+            else headSLL = cur->next;
 
-    initStack(&backStack);
-    initStack(&forwardStack);
-    initQueue(&callHistoryQueue);
+            NodeDLL *doneNode = createNodeDLL(cur->data);
+            if (!headDLL) {
+                headDLL = tailDLL = doneNode;
+            } else {
+                tailDLL->next = doneNode;
+                doneNode->prev = tailDLL;
+                tailDLL = doneNode;
+            }
+            free(cur);
+            printf("Da danh dau la da luyen xong.\n");
+            return;
+        }
+        prev = cur;
+        cur = cur->next;
+    }
+    printf("Khong tim thay cau hoi co ID %d.\n", id);
+}
 
+void displayDoneList() {
+    NodeDLL *cur = headDLL;
+    if (!cur) {
+        printf("Khong co cau hoi da luyen xong.\n");
+        return;
+    }
+    while (cur) {
+        printf("ID: %d | Content: %s | Topic: %s | Level: %d\n", 
+               cur->data.id, cur->data.content, cur->data.topic, cur->data.level);
+        cur = cur->next;
+    }
+}
+
+void searchByKeyword() {
+    char keyword[100];
+    getchar();
+    printf("Nhap tu khoa can tim: "); fgets(keyword, sizeof(keyword), stdin);
+    keyword[strcspn(keyword, "\n")] = '\0';
+
+    NodeSLL *cur = headSLL;
+    int found = 0;
+    while (cur) {
+        if (strstr(cur->data.content, keyword)) {
+            printf("ID: %d | Content: %s | Topic: %s | Level: %d\n", 
+                   cur->data.id, cur->data.content, cur->data.topic, cur->data.level);
+            found = 1;
+        }
+        cur = cur->next;
+    }
+    if (!found) printf("Khong tim thay cau hoi nao chua tu khoa '%s'.\n", keyword);
+}
+
+void sortQuestions() {
+    if (!headSLL || !headSLL->next) return;
+    NodeSLL *i, *j;
+    for (i = headSLL; i; i = i->next) {
+        for (j = i->next; j; j = j->next) {
+            if (strlen(i->data.content) > strlen(j->data.content)) {
+                Question temp = i->data;
+                i->data = j->data;
+                j->data = temp;
+            }
+        }
+    }
+    printf("Da sap xep danh sach cau hoi theo do dai noi dung tang dan.\n");
+}
+
+void menu() {
     int choice;
     do {
-        printf("\n===== CALL HISTORY MANAGER =====\n");
-        printf("1. CALL (Goi so moi)\n");
-        printf("2. BACK (Quay lai so truoc)\n");
-        printf("3. REDIAL (Goi lai so tiep theo)\n");
-        printf("4. HISTORY (Xem lich su cuoc goi)\n");
-        printf("5. EXIT (Thoat chuong trinh)\n");
-        printf("Chon chuc nang (1-5): ");
+        printf("\n—————————— Interview Questions ——————————\n");
+        printf("1. Them cau hoi moi\n");
+        printf("2. Hien thi danh sach cau hoi dang luyen\n");
+        printf("3. Cap nhat noi dung cau hoi\n");
+        printf("4. Danh dau cau hoi la 'da luyen xong'\n");
+        printf("5. Hien thi danh sach cau hoi da luyen xong\n");
+        printf("6. Tim kiem cau hoi theo tu khoa\n");
+        printf("7. Sap xep cau hoi theo do dai noi dung\n");
+        printf("8. Thoat chuong trinh\n");
+        printf("Chon chuc nang: ");
         scanf("%d", &choice);
-        getchar(); // Loại bỏ ký tự Enter
 
-        if (choice == 1) {
-            Call c;
-            printf("Nhap so dien thoai: ");
-            fgets(c.phone, 20, stdin);
-            c.phone[strcspn(c.phone, "\n")] = '\0';  // Xóa newline
-            getCurrentTime(c.timeStr);
+        switch (choice) {
+            case 1: addQuestion(); break;
+            case 2: displaySLL(); break;
+            case 3: updateQuestion(); break;
+            case 4: markAsDone(); break;
+            case 5: displayDoneList(); break;
+            case 6: searchByKeyword(); break;
+            case 7: sortQuestions(); break;
+            case 8: printf("Tam biet!\n"); break;
+            default: printf("Lua chon khong hop le.\n");
+        }
+    } while (choice != 8);
+}
 
-            push(&backStack, c);           // Thêm vào back stack
-            enqueue(&callHistoryQueue, c); // Thêm vào queue lịch sử
-            initStack(&forwardStack);      // Reset forward stack
-
-            printf("Da goi den: %s\n", c.phone);
-        }
-        else if (choice == 2) {
-            if (backStack.top < 1) {
-                printf("Khong co cuoc goi nao truoc do de quay lai.\n");
-            } else {
-                Call last = pop(&backStack);
-                push(&forwardStack, last);
-                Call current = peek(&backStack);
-                printf("Da quay lai so: %s\n", current.phone);
-            }
-        }
-        else if (choice == 3) {
-            if (isEmptyStack(&forwardStack)) {
-                printf("Khong co so nao de goi lai.\n");
-            } else {
-                Call redial = pop(&forwardStack);
-                push(&backStack, redial);
-                printf("Da goi lai so: %s\n", redial.phone);
-            }
-        }
-        else if (choice == 4) {
-            displayQueue(&callHistoryQueue);
-        }
-        else if (choice == 5) {
-            printf("Dang thoat chuong trinh...\n");
-        }
-        else {
-            printf("Lua chon khong hop le. Vui long nhap tu 1 den 5.\n");
-        }
-
-    } while (choice != 5);
-
+int main() {
+    menu();
     return 0;
 }
