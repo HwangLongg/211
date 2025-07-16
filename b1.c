@@ -2,190 +2,134 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct {
+typedef struct Question {
     int id;
-    char title[100];
-    int credit;
-} Course;
+    char content[256];
+} Question;
 
-// Danh sách liên kết đơn cho khóa học đang học
-typedef struct CourseNode {
-    Course data;
-    struct CourseNode* next;
-} CourseNode;
+typedef struct StackNode {
+    Question data;
+    struct StackNode *next;
+} StackNode;
 
-// Danh sách liên kết đôi cho khóa học đã hoàn thành
-typedef struct CompletedNode {
-    Course data;
-    struct CompletedNode* prev;
-    struct CompletedNode* next;
-} CompletedNode;
+typedef struct QueueNode {
+    Question data;
+    struct QueueNode *next;
+} QueueNode;
 
-CourseNode* head = NULL;              // Danh sách đang học
-CompletedNode* completedHead = NULL; // Danh sách đã hoàn thành
+StackNode *practiceStack = NULL;
+StackNode *redoStack = NULL;
+QueueNode *historyFront = NULL;
+QueueNode *historyRear = NULL;
 
-// Thêm khóa học mới
-void themKhoaHoc() {
-    CourseNode* newNode = (CourseNode*)malloc(sizeof(CourseNode));
-    printf("Nhap ID: ");
-    scanf("%d", &newNode->data.id);
-    getchar(); // loại bỏ '\n' sau scanf
-    printf("Nhap ten khoa hoc: ");
-    fgets(newNode->data.title, 100, stdin);
-    newNode->data.title[strcspn(newNode->data.title, "\n")] = '\0';
-    printf("Nhap so tin chi: ");
-    scanf("%d", &newNode->data.credit);
-    newNode->next = head;
-    head = newNode;
-    printf("Da them khoa hoc!\n");
+StackNode* createStackNode(Question q) {
+    StackNode *node = (StackNode*)malloc(sizeof(StackNode));
+    node->data = q;
+    node->next = NULL;
+    return node;
 }
 
-// Hiển thị danh sách đang học
-void hienThiDanhSach() {
-    CourseNode* temp = head;
-    if (!temp) {
-        printf("Danh sach trong!\n");
+QueueNode* createQueueNode(Question q) {
+    QueueNode *node = (QueueNode*)malloc(sizeof(QueueNode));
+    node->data = q;
+    node->next = NULL;
+    return node;
+}
+
+void push(StackNode **top, Question q) {
+    StackNode *node = createStackNode(q);
+    node->next = *top;
+    *top = node;
+}
+
+int pop(StackNode **top, Question *q) {
+    if (*top == NULL) return 0;
+    StackNode *temp = *top;
+    *q = temp->data;
+    *top = (*top)->next;
+    free(temp);
+    return 1;
+}
+
+void enqueue(Question q) {
+    QueueNode *node = createQueueNode(q);
+    if (!historyRear) {
+        historyFront = historyRear = node;
+    } else {
+        historyRear->next = node;
+        historyRear = node;
+    }
+}
+
+void displayHistory() {
+    QueueNode *cur = historyFront;
+    if (!cur) {
+        printf("Khong co cau hoi trong lich su.\n");
         return;
     }
-    printf("\nDanh sach khoa hoc dang hoc:\n");
-    while (temp) {
-        printf("ID: %d | Ten: %s | Tin chi: %d\n", temp->data.id, temp->data.title, temp->data.credit);
-        temp = temp->next;
-    }
-}
-
-// Xóa khóa học theo ID
-void xoaKhoaHoc() {
-    int id;
-    printf("Nhap ID muon xoa: ");
-    scanf("%d", &id);
-    CourseNode *temp = head, *prev = NULL;
-    while (temp) {
-        if (temp->data.id == id) {
-            if (!prev) head = temp->next;
-            else prev->next = temp->next;
-            free(temp);
-            printf("Da xoa!\n");
-            return;
-        }
-        prev = temp;
-        temp = temp->next;
-    }
-    printf("Khong tim thay khoa hoc!\n");
-}
-
-// Cập nhật thông tin khóa học
-void capNhatKhoaHoc() {
-    int id;
-    printf("Nhap ID muon cap nhat: ");
-    scanf("%d", &id);
-    CourseNode* temp = head;
-    while (temp) {
-        if (temp->data.id == id) {
-            getchar();
-            printf("Nhap ten moi: ");
-            fgets(temp->data.title, 100, stdin);
-            temp->data.title[strcspn(temp->data.title, "\n")] = '\0';
-            printf("Nhap tin chi moi: ");
-            scanf("%d", &temp->data.credit);
-            printf("Da cap nhat!\n");
-            return;
-        }
-        temp = temp->next;
-    }
-    printf("Khong tim thay khoa hoc!\n");
-}
-
-// Đánh dấu khóa học đã hoàn thành
-void hoanThanhKhoaHoc() {
-    int id;
-    printf("Nhap ID khoa hoc hoan thanh: ");
-    scanf("%d", &id);
-    CourseNode *temp = head, *prev = NULL;
-
-    while (temp) {
-        if (temp->data.id == id) {
-            // Xóa khỏi danh sách đang học
-            if (!prev) head = temp->next;
-            else prev->next = temp->next;
-
-            // Thêm vào danh sách hoàn thành
-            CompletedNode* newNode = (CompletedNode*)malloc(sizeof(CompletedNode));
-            newNode->data = temp->data;
-            newNode->prev = NULL;
-            newNode->next = completedHead;
-            if (completedHead) completedHead->prev = newNode;
-            completedHead = newNode;
-
-            free(temp);
-            printf("Da chuyen sang da hoan thanh!\n");
-            return;
-        }
-        prev = temp;
-        temp = temp->next;
-    }
-    printf("Khong tim thay khoa hoc!\n");
-}
-
-// Hiển thị danh sách khóa học đã hoàn thành
-void hienThiDaHoanThanh() {
-    CompletedNode* temp = completedHead;
-    if (!temp) {
-        printf("Chua co khoa hoc hoan thanh nao.\n");
-        return;
-    }
-    printf("\nDanh sach khoa hoc da hoan thanh:\n");
-    while (temp) {
-        printf("ID: %d | Ten: %s | Tin chi: %d\n", temp->data.id, temp->data.title, temp->data.credit);
-        temp = temp->next;
-    }
-}
-
-// Giải phóng bộ nhớ
-void giaiPhong() {
-    CourseNode* cur = head;
     while (cur) {
-        CourseNode* next = cur->next;
-        free(cur);
-        cur = next;
-    }
-
-    CompletedNode* c = completedHead;
-    while (c) {
-        CompletedNode* next = c->next;
-        free(c);
-        c = next;
+        printf("ID: %d | Content: %s\n", cur->data.id, cur->data.content);
+        cur = cur->next;
     }
 }
 
-// Menu chính
+void practice() {
+    Question q;
+    printf("Nhap ID: ");
+    scanf("%d", &q.id);
+    getchar();
+    printf("Nhap noi dung: ");
+    fgets(q.content, sizeof(q.content), stdin);
+    q.content[strcspn(q.content, "\n")] = '\0';
+
+    push(&practiceStack, q);
+    enqueue(q);
+    printf("Da luyen cau hoi.\n");
+}
+
+void undo() {
+    Question q;
+    if (pop(&practiceStack, &q)) {
+        push(&redoStack, q);
+        printf("Da undo cau hoi: %s\n", q.content);
+    } else {
+        printf("Khong co cau hoi de undo.\n");
+    }
+}
+
+void redo() {
+    Question q;
+    if (pop(&redoStack, &q)) {
+        push(&practiceStack, q);
+        printf("Da redo cau hoi: %s\n", q.content);
+    } else {
+        printf("Khong co cau hoi de redo.\n");
+    }
+}
+
 void menu() {
-    int chon;
+    int choice;
     do {
-        printf("\n----- MENU QUAN LY KHOA HOC -----\n");
-        printf("1. Them khoa hoc\n");
-        printf("2. Hien thi danh sach dang hoc\n");
-        printf("3. Xoa khoa hoc\n");
-        printf("4. Cap nhat khoa hoc\n");
-        printf("5. Danh dau da hoan thanh\n");
-        printf("6. Hien thi khoa hoc da hoan thanh\n");
-        printf("7. Thoat\n");
+        printf("\n————————— INTERVIEW MANAGER —————————\n");
+        printf("1. PRACTICE: Luyen mot cau hoi moi\n");
+        printf("2. UNDO: Bo qua cau hoi vua luyen\n");
+        printf("3. REDO: Luyen lai cau hoi vua undo\n");
+        printf("4. HISTORY: Hien thi lich su da luyen\n");
+        printf("5. EXIT\n");
         printf("Chon chuc nang: ");
-        scanf("%d", &chon);
-        switch (chon) {
-            case 1: themKhoaHoc(); break;
-            case 2: hienThiDanhSach(); break;
-            case 3: xoaKhoaHoc(); break;
-            case 4: capNhatKhoaHoc(); break;
-            case 5: hoanThanhKhoaHoc(); break;
-            case 6: hienThiDaHoanThanh(); break;
-            case 7: giaiPhong(); printf("Da thoat chuong trinh.\n"); break;
-            default: printf("Lua chon khong hop le!\n");
+        scanf("%d", &choice);
+
+        switch (choice) {
+            case 1: practice(); break;
+            case 2: undo(); break;
+            case 3: redo(); break;
+            case 4: displayHistory(); break;
+            case 5: printf("Thoat chuong trinh.\n"); break;
+            default: printf("Lua chon khong hop le.\n");
         }
-    } while (chon != 7);
+    } while (choice != 5);
 }
 
-// Hàm main
 int main() {
     menu();
     return 0;
