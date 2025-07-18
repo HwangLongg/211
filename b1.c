@@ -2,135 +2,115 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct Question {
-    int id;
-    char content[256];
-} Question;
+typedef struct {
+    char action;
+    char value;
+} Operation;
 
-typedef struct StackNode {
-    Question data;
-    struct StackNode *next;
-} StackNode;
+typedef struct {
+    Operation data[1000];
+    int top;
+} Stack;
 
-typedef struct QueueNode {
-    Question data;
-    struct QueueNode *next;
-} QueueNode;
+char text[1000];
+int length = 0;
 
-StackNode *practiceStack = NULL;
-StackNode *redoStack = NULL;
-QueueNode *historyFront = NULL;
-QueueNode *historyRear = NULL;
+Stack undoStack;
+Stack redoStack;
 
-StackNode* createStackNode(Question q) {
-    StackNode *node = (StackNode*)malloc(sizeof(StackNode));
-    node->data = q;
-    node->next = NULL;
-    return node;
+void initStack(Stack *s) {
+    s->top = -1;
 }
 
-QueueNode* createQueueNode(Question q) {
-    QueueNode *node = (QueueNode*)malloc(sizeof(QueueNode));
-    node->data = q;
-    node->next = NULL;
-    return node;
-}
-
-void push(StackNode **top, Question q) {
-    StackNode *node = createStackNode(q);
-    node->next = *top;
-    *top = node;
-}
-
-int pop(StackNode **top, Question *q) {
-    if (*top == NULL) return 0;
-    StackNode *temp = *top;
-    *q = temp->data;
-    *top = (*top)->next;
-    free(temp);
-    return 1;
-}
-
-void enqueue(Question q) {
-    QueueNode *node = createQueueNode(q);
-    if (!historyRear) {
-        historyFront = historyRear = node;
-    } else {
-        historyRear->next = node;
-        historyRear = node;
+void push(Stack *s, Operation op) {
+    if (s->top < 999) {
+        s->data[++(s->top)] = op;
     }
 }
 
-void displayHistory() {
-    QueueNode *cur = historyFront;
-    if (!cur) {
-        printf("Khong co cau hoi trong lich su.\n");
-        return;
+Operation pop(Stack *s) {
+    Operation empty = {' ', ' '};
+    if (s->top >= 0) {
+        return s->data[(s->top)--];
     }
-    while (cur) {
-        printf("ID: %d | Content: %s\n", cur->data.id, cur->data.content);
-        cur = cur->next;
-    }
+    return empty;
 }
 
-void practice() {
-    Question q;
-    printf("Nhap ID: ");
-    scanf("%d", &q.id);
-    getchar();
-    printf("Nhap noi dung: ");
-    fgets(q.content, sizeof(q.content), stdin);
-    q.content[strcspn(q.content, "\n")] = '\0';
+int isEmpty(Stack *s) {
+    return s->top == -1;
+}
 
-    push(&practiceStack, q);
-    enqueue(q);
-    printf("Da luyen cau hoi.\n");
+void insertChar(char x) {
+    if (length < 999) {
+        text[length++] = x;
+        text[length] = '\0';
+        Operation op = {'I', x};
+        push(&undoStack, op);
+        redoStack.top = -1;
+    }
 }
 
 void undo() {
-    Question q;
-    if (pop(&practiceStack, &q)) {
-        push(&redoStack, q);
-        printf("Da undo cau hoi: %s\n", q.content);
+    if (!isEmpty(&undoStack)) {
+        Operation lastOp = pop(&undoStack);
+        if (lastOp.action == 'I' && length > 0 && text[length - 1] == lastOp.value) {
+            length--;
+            text[length] = '\0';
+            push(&redoStack, lastOp);
+        }
     } else {
-        printf("Khong co cau hoi de undo.\n");
+        printf("Khong co thao tac de hoan tac.\n");
     }
 }
 
 void redo() {
-    Question q;
-    if (pop(&redoStack, &q)) {
-        push(&practiceStack, q);
-        printf("Da redo cau hoi: %s\n", q.content);
+    if (!isEmpty(&redoStack)) {
+        Operation lastUndo = pop(&redoStack);
+        if (lastUndo.action == 'I') {
+            if (length < 999) {
+                text[length++] = lastUndo.value;
+                text[length] = '\0';
+                push(&undoStack, lastUndo);
+            }
+        }
     } else {
-        printf("Khong co cau hoi de redo.\n");
+        printf("Khong co thao tac de phuc hoi.\n");
     }
 }
 
-void menu() {
-    int choice;
-    do {
-        printf("\n————————— INTERVIEW MANAGER —————————\n");
-        printf("1. PRACTICE: Luyen mot cau hoi moi\n");
-        printf("2. UNDO: Bo qua cau hoi vua luyen\n");
-        printf("3. REDO: Luyen lai cau hoi vua undo\n");
-        printf("4. HISTORY: Hien thi lich su da luyen\n");
-        printf("5. EXIT\n");
-        printf("Chon chuc nang: ");
-        scanf("%d", &choice);
-
-        switch (choice) {
-            case 1: practice(); break;
-            case 2: undo(); break;
-            case 3: redo(); break;
-            case 4: displayHistory(); break;
-            case 5: printf("Thoat chuong trinh.\n"); break;
-            default: printf("Lua chon khong hop le.\n");
-        }
-    } while (choice != 5);
+void displayText() {
+    printf("Van ban hien tai: %s\n", text);
 }
 
 int main() {
-    menu();
+    initStack(&undoStack);
+    initStack(&redoStack);
+
+    char command[20];
+    char x;
+
+    printf("—————— TEXT EDITOR ——————\n");
+
+    while (1) {
+        printf("\nNhap lenh (INSERT x | UNDO | REDO | HIEN THI | THOAT): ");
+        scanf("%s", command);
+
+        if (strcmp(command, "INSERT") == 0) {
+            scanf(" %c", &x);
+            insertChar(x);
+        } else if (strcmp(command, "UNDO") == 0) {
+            undo();
+        } else if (strcmp(command, "REDO") == 0) {
+            redo();
+        } else if (strcmp(command, "HIEN") == 0) {
+            scanf("%s", command);
+            displayText();
+        } else if (strcmp(command, "THOAT") == 0) {
+            break;
+        } else {
+            printf("Lenh khong hop le.\n");
+        }
+    }
+
     return 0;
 }
