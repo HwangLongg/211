@@ -2,115 +2,138 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef struct {
-    char action;
-    char value;
-} Operation;
+typedef struct Command {
+    char command[100];
+    struct Command* next;
+} Command;
 
-typedef struct {
-    Operation data[1000];
-    int top;
-} Stack;
+Command* executedStack = NULL;
+Command* redoStack = NULL;
 
-char text[1000];
-int length = 0;
-
-Stack undoStack;
-Stack redoStack;
-
-void initStack(Stack *s) {
-    s->top = -1;
+void push(Command** stack, const char* cmd) {
+    Command* newNode = (Command*)malloc(sizeof(Command));
+    strcpy(newNode->command, cmd);
+    newNode->next = *stack;
+    *stack = newNode;
 }
 
-void push(Stack *s, Operation op) {
-    if (s->top < 999) {
-        s->data[++(s->top)] = op;
+char* pop(Command** stack) {
+    if (*stack == NULL) return NULL;
+    Command* temp = *stack;
+    *stack = temp->next;
+    char* cmd = strdup(temp->command);
+    free(temp);
+    return cmd;
+}
+
+void clearStack(Command** stack) {
+    while (*stack != NULL) {
+        Command* temp = *stack;
+        *stack = temp->next;
+        free(temp);
     }
 }
 
-Operation pop(Stack *s) {
-    Operation empty = {' ', ' '};
-    if (s->top >= 0) {
-        return s->data[(s->top)--];
-    }
-    return empty;
-}
-
-int isEmpty(Stack *s) {
-    return s->top == -1;
-}
-
-void insertChar(char x) {
-    if (length < 999) {
-        text[length++] = x;
-        text[length] = '\0';
-        Operation op = {'I', x};
-        push(&undoStack, op);
-        redoStack.top = -1;
+void printStack(Command* stack) {
+    Command* temp = stack;
+    int index = 1;
+    while (temp != NULL) {
+        printf("%d. %s\n", index++, temp->command);
+        temp = temp->next;
     }
 }
 
-void undo() {
-    if (!isEmpty(&undoStack)) {
-        Operation lastOp = pop(&undoStack);
-        if (lastOp.action == 'I' && length > 0 && text[length - 1] == lastOp.value) {
-            length--;
-            text[length] = '\0';
-            push(&redoStack, lastOp);
-        }
+void themLenhMoi() {
+    char newCmd[100];
+    printf("Nhap lenh moi: ");
+    getchar();
+    fgets(newCmd, sizeof(newCmd), stdin);
+    newCmd[strcspn(newCmd, "\n")] = '\0';
+    push(&executedStack, newCmd);
+    clearStack(&redoStack);
+    printf("Da them lenh moi: %s\n", newCmd);
+}
+
+void hoanTacLenh() {
+    if (executedStack == NULL) {
+        printf("Khong co lenh nao de hoan tac.\n");
+        return;
+    }
+    char* undone = pop(&executedStack);
+    push(&redoStack, undone);
+    printf("Da hoan tac lenh: %s\n", undone);
+    free(undone);
+}
+
+void phucHoiLenh() {
+    if (redoStack == NULL) {
+        printf("Khong co lenh nao de phuc hoi.\n");
+        return;
+    }
+    char* redone = pop(&redoStack);
+    push(&executedStack, redone);
+    printf("Da phuc hoi lenh: %s\n", redone);
+    free(redone);
+}
+
+void xemLenhHienTai() {
+    if (executedStack == NULL) {
+        printf("Khong co lenh nao dang duoc thuc hien.\n");
     } else {
-        printf("Khong co thao tac de hoan tac.\n");
+        printf("Lenh hien tai: %s\n", executedStack->command);
     }
 }
 
-void redo() {
-    if (!isEmpty(&redoStack)) {
-        Operation lastUndo = pop(&redoStack);
-        if (lastUndo.action == 'I') {
-            if (length < 999) {
-                text[length++] = lastUndo.value;
-                text[length] = '\0';
-                push(&undoStack, lastUndo);
-            }
-        }
+void danhSachLenhDaThucHien() {
+    if (executedStack == NULL) {
+        printf("Khong co lenh nao da duoc thuc hien.\n");
     } else {
-        printf("Khong co thao tac de phuc hoi.\n");
+        printf("Danh sach lenh da thuc hien:\n");
+        printStack(executedStack);
     }
 }
 
-void displayText() {
-    printf("Van ban hien tai: %s\n", text);
+void lamMoiLichSu() {
+    clearStack(&executedStack);
+    clearStack(&redoStack);
+    printf("Da lam moi lich su.\n");
+}
+
+void giaiPhongBoNho() {
+    clearStack(&executedStack);
+    clearStack(&redoStack);
 }
 
 int main() {
-    initStack(&undoStack);
-    initStack(&redoStack);
+    int choice;
+    do {
+        printf("\n------------------ ROBOT COMMAND MANAGER ------------------\n");
+        printf("1. THEM LENH MOI (MOVE, TURN, JUMP,...)\n");
+        printf("2. HOAN TAC LENH (UNDO)\n");
+        printf("3. PHUC HOI LENH (REDO)\n");
+        printf("4. XEM LENH HIEN TAI\n");
+        printf("5. DANH SACH LENH DA THUC HIEN\n");
+        printf("6. LAM MOI LICH SU\n");
+        printf("7. THOAT\n");
+        printf("Chon chuc nang: ");
+        scanf("%d", &choice);
 
-    char command[20];
-    char x;
-
-    printf("—————— TEXT EDITOR ——————\n");
-
-    while (1) {
-        printf("\nNhap lenh (INSERT x | UNDO | REDO | HIEN THI | THOAT): ");
-        scanf("%s", command);
-
-        if (strcmp(command, "INSERT") == 0) {
-            scanf(" %c", &x);
-            insertChar(x);
-        } else if (strcmp(command, "UNDO") == 0) {
-            undo();
-        } else if (strcmp(command, "REDO") == 0) {
-            redo();
-        } else if (strcmp(command, "HIEN") == 0) {
-            scanf("%s", command);
-            displayText();
-        } else if (strcmp(command, "THOAT") == 0) {
-            break;
-        } else {
-            printf("Lenh khong hop le.\n");
+        switch (choice) {
+            case 1: themLenhMoi(); break;
+            case 2: hoanTacLenh(); break;
+            case 3: phucHoiLenh(); break;
+            case 4: xemLenhHienTai(); break;
+            case 5: danhSachLenhDaThucHien(); break;
+            case 6: lamMoiLichSu(); break;
+            case 7:
+                giaiPhongBoNho();
+                printf("Ket thuc chuong trinh.\n");
+                break;
+            default:
+                printf("Lua chon khong hop le.\n");
         }
-    }
+
+    } while (choice != 7);
 
     return 0;
 }
