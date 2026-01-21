@@ -1,157 +1,263 @@
--- khởi tạo cơ sở dữ liệu
-create database studio_management;
-use studio_management;
+-- phần 1: thiết kế csdl & chèn dữ liệu (25 điểm)
+-- 1. thiết kế bảng (15 điểm)
 
--- =============================================================
--- phần 1: tạo cấu trúc bảng và chèn dữ liệu
--- =============================================================
+-- tạo cơ sở dữ liệu
+create database if not exists logistics_db;
+use logistics_db;
 
--- 1. tạo bảng creator
-create table creator (
-    creator_id varchar(5) primary key,
-    creator_name varchar(100) not null,
-    creator_email varchar(100) not null unique,
-    creator_phone varchar(15) not null unique,
-    creator_platform varchar(50) not null
+-- bảng 1: shippers
+create table shippers (
+    ma_tai_xe int primary key,
+    ho_ten varchar(100) not null,
+    so_dien_thoai varchar(20) unique,
+    loai_bang_lai varchar(10) not null,
+    diem_danh_gia decimal(3,1) default 5.0 check (diem_danh_gia >= 0 and diem_danh_gia <= 5)
 );
 
--- 2. tạo bảng studio
-create table studio (
-    studio_id varchar(5) primary key,
-    studio_name varchar(100) not null,
-    studio_location varchar(100) not null,
-    hourly_price decimal(10,2) not null,
-    studio_status varchar(20) not null
+-- bảng 2: vehicle_details
+create table vehicle_details (
+    ma_phuong_tien int primary key,
+    ma_tai_xe int,
+    bien_so_xe varchar(20) unique,
+    loai_xe varchar(50),
+    trong_tai_toi_da decimal(10,2) check (trong_tai_toi_da > 0),
+    foreign key (ma_tai_xe) references shippers(ma_tai_xe)
 );
 
--- 3. tạo bảng livesession (phiên livestream)
-create table livesession (
-    session_id int primary key auto_increment,
-    creator_id varchar(5) not null,
-    studio_id varchar(5) not null,
-    session_date date not null,
-    duration_hours int not null,
-    foreign key (creator_id) references creator(creator_id),
-    foreign key (studio_id) references studio(studio_id)
+-- bảng 3: shipments
+create table shipments (
+    ma_van_don int primary key,
+    ten_hang_hoa varchar(200),
+    trong_luong_thuc_te decimal(10,2) check (trong_luong_thuc_te > 0),
+    gia_tri_hang_hoa decimal(15,2),
+    trang_thai varchar(50)
 );
 
--- 4. tạo bảng payment (thanh toán)
-create table payment (
-    payment_id int primary key auto_increment,
-    session_id int not null,
-    payment_method varchar(50) not null,
-    payment_amount decimal(10,2) not null,
-    payment_date date not null,
-    foreign key (session_id) references livesession(session_id)
+-- bảng 4: delivery_orders
+create table delivery_orders (
+    ma_phieu int primary key,
+    ma_van_don int,
+    ma_tai_xe_dam_nhan int,
+    thoi_gian_dieu_phoi datetime default current_timestamp,
+    phi_van_chuyen decimal(15,2),
+    trang_thai_phieu varchar(50),
+    foreign key (ma_van_don) references shipments(ma_van_don),
+    foreign key (ma_tai_xe_dam_nhan) references shippers(ma_tai_xe)
 );
 
--- 5. chèn dữ liệu mẫu
-insert into creator (creator_id, creator_name, creator_email, creator_phone, creator_platform) values
-('cr01', 'nguyen van a', 'a@live.com', '0901111111', 'tiktok'),
-('cr02', 'tran thi b', 'b@live.com', '0902222222', 'youtube'),
-('cr03', 'le minh c', 'c@live.com', '0903333333', 'facebook'),
-('cr04', 'pham thi d', 'd@live.com', '0904444444', 'tiktok'),
-('cr05', 'vu hoang e', 'e@live.com', '0905555555', 'shopee live');
+-- bảng 5: delivery_log
+create table delivery_log (
+    ma_nhat_ky int primary key,
+    ma_phieu_dieu_phoi int,
+    vi_tri_hien_tai varchar(200),
+    thoi_diem_ghi_nhan datetime,
+    ghi_chu text,
+    foreign key (ma_phieu_dieu_phoi) references delivery_orders(ma_phieu)
+);
 
-insert into studio (studio_id, studio_name, studio_location, hourly_price, studio_status) values
-('st01', 'studio a', 'ha noi', 20.00, 'available'),
-('st02', 'studio b', 'hcm', 25.00, 'available'),
-('st03', 'studio c', 'danang', 30.00, 'booked'),
-('st04', 'studio d', 'ha noi', 22.00, 'available'),
-('st05', 'studio e', 'can tho', 18.00, 'maintenance');
+-- 2. dml (10 điểm): insert dữ liệu mẫu
 
-insert into livesession (creator_id, studio_id, session_date, duration_hours) values
-('cr01', 'st01', '2025-05-01', 3),
-('cr02', 'st02', '2025-05-02', 4),
-('cr03', 'st03', '2025-05-03', 2),
-('cr01', 'st04', '2025-05-04', 5),
-('cr05', 'st02', '2025-05-05', 1);
+-- insert shippers
+insert into shippers values 
+(1, 'Nguyen Van An', '0901234567', 'C', 4.8),
+(2, 'Tran Thi Binh', '0912345678', 'A2', 5.0),
+(3, 'Le Hoang Nam', '0983456789', 'FC', 4.2),
+(4, 'Pham Minh Duc', '0354567890', 'B2', 4.9),
+(5, 'Hoang Quoc Viet', '0775678901', 'C', 4.7);
 
-insert into payment (session_id, payment_method, payment_amount, payment_date) values
-(1, 'cash', 60.00, '2025-05-01'),
-(2, 'credit card', 100.00, '2025-05-02'),
-(3, 'bank transfer', 60.00, '2025-05-03'),
-(4, 'credit card', 110.00, '2025-05-04'),
-(5, 'cash', 25.00, '2025-05-05');
+-- insert vehicle_details
+insert into vehicle_details values 
+(101, 1, '29C-123.45', 'Tải', 3500),
+(102, 2, '59A-888.88', 'Xe máy', 500),
+(103, 3, '15R-999.99', 'Container', 32000),
+(104, 4, '30F-111.22', 'Tải', 1500),
+(105, 5, '43C-444.55', 'Tải', 5000);
 
--- 6. cập nhật & xóa dữ liệu
--- cập nhật nền tảng cho creator cr03
-update creator set creator_platform = 'youtube' where creator_id = 'cr03';
+-- insert shipments
+insert into shipments values 
+(5001, 'Smart TV Samsung 55 inch', 25.5, 15000000, 'In Transit'),
+(5002, 'Laptop Dell XPS', 2.0, 35000000, 'Delivered'),
+(5003, 'Máy nén khí công nghiệp', 450.0, 120000000, 'In Transit'),
+(5004, 'Thùng trái cây nhập khẩu', 15.0, 2500000, 'Returned'),
+(5005, 'Máy giặt LG Inverter', 70.0, 9500000, 'In Transit');
 
--- cập nhật studio st05 hoạt động trở lại và giảm giá 10%
-update studio 
-set studio_status = 'available', 
-    hourly_price = hourly_price * 0.9 
-where studio_id = 'st05';
+-- insert delivery_orders
+insert into delivery_orders values 
+(9001, 5001, 1, '2024-05-20 08:00:00', 2000000, 'Processing'),
+(9002, 5002, 2, '2024-05-20 09:30:00', 3500000, 'Finished'),
+(9003, 5003, 3, '2024-05-20 10:15:00', 2500000, 'Processing'),
+(9004, 5004, 5, '2024-05-21 07:00:00', 1500000, 'Finished'),
+(9005, 5005, 4, '2024-05-21 08:45:00', 2500000, 'Pending');
 
--- xóa các thanh toán tiền mặt (cash) trước ngày 2025-05-03
-delete from payment 
-where payment_method = 'cash' and payment_date < '2025-05-03';
+-- insert delivery_log
+insert into delivery_log values 
+(1, 9001, 'Kho tổng (Hà Nội)', '2021-05-15 08:15:00', 'Rời kho'),
+(2, 9001, 'Trạm thu phí Phủ Lý', '2021-05-17 10:00:00', 'Đang giao'),
+(3, 9002, 'Quận 1, TP.HCM', '2024-05-19 10:30:00', 'Đã đến điểm đích'),
+(4, 9003, 'Cảng Hải Phòng', '2024-05-20 11:00:00', 'Rời kho'),
+(5, 9004, 'Kho hoàn hàng (Đà Nẵng)', '2024-05-21 14:00:00', 'Đã nhập kho trả hàng');
 
+-- 1. câu lệnh tăng phí vận chuyển thêm 10%
+update delivery_orders d
+join shipments s on d.ma_van_don = s.ma_van_don
+set d.phi_van_chuyen = d.phi_van_chuyen * 1.1
+where d.trang_thai_phieu = 'Finished' and s.trong_luong_thuc_te > 100;
 
--- =============================================================
--- phần 2: truy vấn dữ liệu cơ bản
--- =============================================================
+-- 2. câu lệnh xóa các bản ghi trong nhật ký di chuyển trước ngày 17/05/2024
+delete from delivery_log 
+where thoi_diem_ghi_nhan < '2024-05-17 00:00:00';
 
--- 1. liệt kê studio có trạng thái available và giá > 20
-select * from studio where studio_status = 'available' and hourly_price > 20;
+-- phần 2: truy vấn dữ liệu cơ bản (15 điểm)
 
--- 2. lấy thông tin creator có nền tảng tiktok
-select creator_name, creator_phone from creator where creator_platform = 'tiktok';
+-- câu 1: liệt kê phương tiện
+select bien_so_xe, loai_xe, trong_tai_toi_da 
+from vehicle_details 
+where trong_tai_toi_da > 5000 
+   or (loai_xe = 'Container' and trong_tai_toi_da < 2000);
 
--- 3. danh sách studio sắp xếp theo giá thuê giảm dần
-select studio_id, studio_name, hourly_price from studio order by hourly_price desc;
+-- câu 2: lấy thông tin tài xế
+select ho_ten, so_dien_thoai 
+from shippers 
+where diem_danh_gia between 4.5 and 5.0 
+  and so_dien_thoai like '090%';
 
--- 4. lấy 3 payment đầu tiên có phương thức credit card
-select * from payment where payment_method = 'credit card' limit 3;
+-- câu 3: phân trang (trang 2, mỗi trang 2 đơn) sắp xếp theo giá trị hàng hóa giảm dần
+select s.ma_van_don, s.ten_hang_hoa, s.gia_tri_hang_hoa
+from shipments s
+order by s.gia_tri_hang_hoa desc
+limit 2 offset 2;
 
--- 5. lấy danh sách creator, bỏ qua 2 người đầu và lấy 2 người tiếp theo
-select creator_id, creator_name from creator limit 2 offset 2;
+-- phần 3: truy vấn dữ liệu nâng cao (20 điểm)
 
+-- câu 1: hiển thị thông tin đơn hàng đầy đủ
+select sh.ho_ten as ho_ten_tai_xe, s.ma_van_don, s.ten_hang_hoa, d.phi_van_chuyen, d.thoi_gian_dieu_phoi
+from delivery_orders d
+join shippers sh on d.ma_tai_xe_dam_nhan = sh.ma_tai_xe
+join shipments s on d.ma_van_don = s.ma_van_don;
 
--- =============================================================
--- phần 3: truy vấn dữ liệu nâng cao
--- =============================================================
+-- câu 2: tổng phí vận chuyển mỗi tài xế > 3tr
+select d.ma_tai_xe_dam_nhan, sum(d.phi_van_chuyen) as tong_phi_van_chuyen
+from delivery_orders d
+group by d.ma_tai_xe_dam_nhan
+having sum(d.phi_van_chuyen) > 3000000;
 
--- 1. danh sách livestream chi tiết gồm: id, tên creator, tên studio, số giờ, tiền thanh toán
-select l.session_id, c.creator_name, s.studio_name, l.duration_hours, p.payment_amount
-from livesession l
-join creator c on l.creator_id = c.creator_id
-join studio s on l.studio_id = s.studio_id
-join payment p on l.session_id = p.session_id;
+-- câu 3: tài xế có điểm đánh giá trung bình cao nhất
+-- (lưu ý: cấu trúc bảng hiện tại điểm đánh giá nằm ở bảng shippers, không phải bảng đánh giá riêng, 
+-- nên ta lấy trực tiếp từ bảng shippers)
+select * from shippers 
+order by diem_danh_gia desc 
+limit 1;
 
--- 2. liệt kê tất cả studio và số lần được sử dụng (kể cả studio chưa thuê)
-select s.studio_id, s.studio_name, count(l.session_id) as usage_count
-from studio s
-left join livesession l on s.studio_id = l.studio_id
-group by s.studio_id, s.studio_name;
+-- phần 4: index và view (10 điểm)
 
--- 3. tính tổng doanh thu theo từng phương thức thanh toán
-select payment_method, sum(payment_amount) as total_revenue
-from payment
-group by payment_method;
+-- câu 1: tạo composite index
+create index idx_shipment_status_value on shipments(trang_thai, gia_tri_hang_hoa);
 
--- 4. thống kê số session của mỗi creator (chỉ lấy người có từ 2 session trở lên)
-select c.creator_name, count(l.session_id) as session_count
-from creator c
-join livesession l on c.creator_id = l.creator_id
-group by c.creator_id, c.creator_name
-having count(l.session_id) >= 2;
+-- câu 2: tạo view vw_driver_performance
+create view vw_driver_performance as
+select sh.ho_ten, 
+       count(d.ma_phieu) as tong_so_chuyen, 
+       sum(d.phi_van_chuyen) as tong_doanh_thu
+from shippers sh
+join delivery_orders d on sh.ma_tai_xe = d.ma_tai_xe_dam_nhan
+where d.trang_thai_phieu != 'Cancelled'
+group by sh.ma_tai_xe, sh.ho_ten;
 
--- 5. lấy studio có giá thuê cao hơn mức trung bình của tất cả studio
-select * from studio 
-where hourly_price > (select avg(hourly_price) from studio);
+-- phần 5: trigger (10 điểm)
 
--- 6. hiển thị creator đã từng livestream tại studio b
-select distinct c.creator_name, c.creator_email
-from creator c
-join livesession l on c.creator_id = l.creator_id
-join studio s on l.studio_id = s.studio_id
-where s.studio_name = 'studio b';
+-- câu 1: trigger trg_after_delivery_finish
+delimiter //
+create trigger trg_after_delivery_finish
+after update on delivery_orders
+for each row
+begin
+    if new.trang_thai_phieu = 'Finished' and old.trang_thai_phieu != 'Finished' then
+        insert into delivery_log(ma_nhat_ky, ma_phieu_dieu_phoi, vi_tri_hien_tai, thoi_diem_ghi_nhan, ghi_chu)
+        values (
+            (select ifnull(max(ma_nhat_ky), 0) + 1 from delivery_log as log_alias), -- tự tăng mã log đơn giản
+            new.ma_phieu,
+            'Tại điểm đích',
+            now(),
+            'Delivery Completed Successfully'
+        );
+    end if;
+end //
+delimiter ;
 
--- 7. báo cáo tổng hợp thông tin phiên live và thanh toán
-select l.session_id, c.creator_name, s.studio_name, p.payment_method, p.payment_amount
-from livesession l
-join creator c on l.creator_id = c.creator_id
-join studio s on l.studio_id = s.studio_id
-join payment p on l.session_id = p.session_id;
+-- câu 2: trigger trg_update_driver_rating
+delimiter //
+create trigger trg_update_driver_rating
+after insert on delivery_orders
+for each row
+begin
+    if new.trang_thai_phieu = 'Finished' then
+        update shippers
+        set diem_danh_gia = least(diem_danh_gia + 0.1, 5.0)
+        where ma_tai_xe = new.ma_tai_xe_dam_nhan;
+    end if;
+end //
+delimiter ;
+
+-- phần 6: stored procedure (20 điểm)
+
+-- câu 1: procedure sp_check_payload_status
+delimiter //
+create procedure sp_check_payload_status(
+    in p_ma_phuong_tien int,
+    out p_message varchar(50)
+)
+begin
+    declare v_trong_tai_toi_da decimal(10,2);
+    declare v_trong_luong_thuc_te decimal(10,2);
+    
+    -- lấy trọng tải xe và trọng lượng hàng của đơn hàng mới nhất xe đó đang chở
+    select v.trong_tai_toi_da, s.trong_luong_thuc_te
+    into v_trong_tai_toi_da, v_trong_luong_thuc_te
+    from vehicle_details v
+    join delivery_orders d on v.ma_tai_xe = d.ma_tai_xe_dam_nhan
+    join shipments s on d.ma_van_don = s.ma_van_don
+    where v.ma_phuong_tien = p_ma_phuong_tien
+    order by d.thoi_gian_dieu_phoi desc
+    limit 1;
+    
+    if v_trong_luong_thuc_te > v_trong_tai_toi_da then
+        set p_message = 'Quá tải';
+    elseif v_trong_luong_thuc_te = v_trong_tai_toi_da then
+        set p_message = 'Đầy tải';
+    else
+        set p_message = 'An toàn';
+    end if;
+end //
+delimiter ;
+
+-- câu 2: procedure sp_reassign_driver
+delimiter //
+create procedure sp_reassign_driver(
+    in p_ma_phieu int,
+    in p_ma_tai_xe_moi int
+)
+begin
+    declare exit handler for sqlexception
+    begin
+        rollback;
+    end;
+
+    start transaction;
+        -- b2: cập nhật mã tài xế mới
+        update delivery_orders
+        set ma_tai_xe_dam_nhan = p_ma_tai_xe_moi
+        where ma_phieu = p_ma_phieu;
+        
+        -- b3: ghi nhật ký
+        insert into delivery_log(ma_nhat_ky, ma_phieu_dieu_phoi, vi_tri_hien_tai, thoi_diem_ghi_nhan, ghi_chu)
+        values (
+            (select ifnull(max(ma_nhat_ky), 0) + 1 from delivery_log as log_alias),
+            p_ma_phieu,
+            'Trạm điều phối',
+            now(),
+            'Driver Reassigned'
+        );
+        
+    commit;
+end //
+delimiter ;
